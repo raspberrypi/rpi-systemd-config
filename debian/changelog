@@ -1,0 +1,5 @@
+rpi-systemd-config (1.0.0) bookworm; urgency=medium
+
+  * Initial release
+
+ -- Richard Oliver <richard.oliver@raspberrypi.com>  Thu, 12 Jun 2025 14:58:36 +0100

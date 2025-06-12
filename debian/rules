@@ -1,0 +1,8 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+execute_before_dh_install:
+	pandoc rpi-systemd-config.md --standalone --to=man --shift-heading-level-by=-1 \
+		--output=debian/rpi-systemd-config.1

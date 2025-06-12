@@ -1,0 +1,9 @@
+build/
+.debhelper/
+*.debhelper
+debian/debhelper-build-stamp
+debian/files
+debian/rpi-systemd-config
+debian/rpi-systemd-config.1
+*.substvars
+*.egg-info/
