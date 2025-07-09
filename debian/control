@@ -8,7 +8,7 @@ Homepage: https://www.raspberrypi.com/software
 
 Package: rpi-systemd-config
 Architecture: any
-Depends: ${misc:Depends}, python3, libsystemd-shared (>= 252), libsystemd-shared (<< 253)
+Depends: ${misc:Depends}, python3, libsystemd-shared (>= 252), libsystemd-shared (<< 258) | libsystemd0 (>= 252), libsystemd0 (<< 258)
 Description: Query systemd configuration files
  A configuration query tool that extracts values from systemd configuration
  files and outputs shell variable assignments. Uses systemd's own configuration

@@ -25,18 +25,24 @@ def find_systemd_library():
     if not multiarch:
         raise OSError(f"Unsupported architecture: {machine}. Supported architectures: {', '.join(arch_mappings.keys())}")
 
-    # Look specifically for version 252 of the library
-    lib_path = f'/usr/lib/{multiarch}/systemd/libsystemd-shared-252.so'
+    # Try to find available systemd library versions
+    systemd_lib_dir = f'/usr/lib/{multiarch}/systemd'
 
-    if not os.path.exists(lib_path):
-        raise OSError(f"systemd shared library version 252 not found at {lib_path}")
+    # Look for different systemd versions (257 first, then 252)
+    for version in ['257', '252']:
+        lib_path = f'{systemd_lib_dir}/libsystemd-shared-{version}.so'
+        if os.path.exists(lib_path):
+            return lib_path, version
 
-    return lib_path
+    raise OSError(f"No compatible systemd shared library found in {systemd_lib_dir}. Supported versions: 252, 257")
 
 # Load the systemd shared library
 try:
-    lib_path = find_systemd_library()
+    lib_path, systemd_version = find_systemd_library()
     lib = ctypes.CDLL(lib_path)
+    # Only show debug info if DEBUG environment variable is set
+    if os.environ.get('DEBUG'):
+        print(f"Debug: Using systemd library version {systemd_version} from {lib_path}", file=sys.stderr)
 except OSError as e:
     print(f"Error: Failed to load systemd library: {e}", file=sys.stderr)
     sys.exit(1)
@@ -62,59 +68,86 @@ class ConfigTableItem(Structure):
         ("data", c_void_p),
     ]
 
-# Define function signatures
+# Define function signatures based on systemd version
+def setup_function_signatures():
+    """Set up function signatures based on the detected systemd version"""
 
-# config_parse_many function
-lib.config_parse_many.argtypes = [
-    POINTER(c_char_p),  # conf_files (string array)
-    POINTER(c_char_p),  # conf_file_dirs (string array)
-    c_char_p,           # dropin_dirname
-    c_char_p,           # sections (nulstr format)
-    c_void_p,           # lookup function pointer
-    POINTER(ConfigTableItem),  # table
-    c_int,              # flags
-    c_void_p,           # userdata
-    c_void_p,           # ret_stats_by_path
-    c_void_p            # ret_drop_in_files
-]
-lib.config_parse_many.restype = c_int
+    # Common functions for both versions
+    # strv_free function
+    lib.strv_free.argtypes = [POINTER(c_char_p)]
+    lib.strv_free.restype = POINTER(c_char_p)
 
-# conf_files_list_strv function
-lib.conf_files_list_strv.argtypes = [
-    POINTER(POINTER(c_char_p)),  # ret (char***)
-    c_char_p,                    # suffix
-    c_char_p,                    # root
-    c_int,                       # flags
-    POINTER(c_char_p)            # dirs
-]
-lib.conf_files_list_strv.restype = c_int
+    # strv_split_nulstr function
+    lib.strv_split_nulstr.argtypes = [c_char_p]
+    lib.strv_split_nulstr.restype = POINTER(c_char_p)
 
-# strv_free function
-lib.strv_free.argtypes = [POINTER(c_char_p)]
-lib.strv_free.restype = POINTER(c_char_p)
+    # config_parse_string function
+    lib.config_parse_string.argtypes = [
+        c_char_p,  # unit
+        c_char_p,  # filename
+        c_uint,    # line
+        c_char_p,  # section
+        c_uint,    # section_line
+        c_char_p,  # lvalue
+        c_int,     # ltype
+        c_char_p,  # rvalue
+        c_void_p,  # data
+        c_void_p   # userdata
+    ]
+    lib.config_parse_string.restype = c_int
 
-# strv_split_nulstr function
-lib.strv_split_nulstr.argtypes = [c_char_p]
-lib.strv_split_nulstr.restype = POINTER(c_char_p)
+    if systemd_version == '257':
+        # For systemd 257, use the new API - no fallback allowed due to ABI instability
+        if not hasattr(lib, 'config_parse_standard_file_with_dropins_full'):
+            raise OSError(f"systemd version 257 detected but config_parse_standard_file_with_dropins_full function not found. "
+                         f"This indicates an incompatible or corrupted systemd installation.")
 
-# strv_print function
-lib.strv_print.argtypes = [POINTER(c_char_p)]
-lib.strv_print.restype = None
+        # config_parse_standard_file_with_dropins_full function
+        lib.config_parse_standard_file_with_dropins_full.argtypes = [
+            c_char_p,  # root
+            c_char_p,  # main_file
+            c_char_p,  # sections (nulstr format)
+            c_void_p,  # lookup function pointer (ConfigItemLookup)
+            c_void_p,  # table (const void *)
+            c_int,     # flags (ConfigParseFlags)
+            c_void_p,  # userdata
+            c_void_p,  # ret_stats_by_path (Hashmap **)
+            c_void_p   # ret_dropin_files (char ***)
+        ]
+        lib.config_parse_standard_file_with_dropins_full.restype = c_int
+    else:
+        # For systemd 252, use the legacy API
+        setup_legacy_api()
 
-# config_parse_string function
-lib.config_parse_string.argtypes = [
-    c_char_p,  # unit
-    c_char_p,  # filename
-    c_uint,    # line
-    c_char_p,  # section
-    c_uint,    # section_line
-    c_char_p,  # lvalue
-    c_int,     # ltype
-    c_char_p,  # rvalue
-    c_void_p,  # data
-    c_void_p   # userdata
-]
-lib.config_parse_string.restype = c_int
+def setup_legacy_api():
+    """Set up function signatures for legacy systemd API (252)"""
+    # config_parse_many function
+    lib.config_parse_many.argtypes = [
+        POINTER(c_char_p),  # conf_files (string array)
+        POINTER(c_char_p),  # conf_file_dirs (string array)
+        c_char_p,           # dropin_dirname
+        c_char_p,           # sections (nulstr format)
+        c_void_p,           # lookup function pointer
+        POINTER(ConfigTableItem),  # table
+        c_int,              # flags
+        c_void_p,           # userdata
+        c_void_p,           # ret_stats_by_path
+        c_void_p            # ret_drop_in_files
+    ]
+    lib.config_parse_many.restype = c_int
+
+    # conf_files_list_strv function
+    lib.conf_files_list_strv.argtypes = [
+        POINTER(POINTER(c_char_p)),  # ret (char***)
+        c_char_p,                    # suffix
+        c_char_p,                    # root
+        c_int,                       # flags
+        POINTER(c_char_p)            # dirs
+    ]
+    lib.conf_files_list_strv.restype = c_int
+
+# Set up function signatures
+setup_function_signatures()
 
 # Get function pointers
 config_parse_string_func = lib.config_parse_string
@@ -156,8 +189,8 @@ def create_config_table(parse_func, queries):
 
     return table, parsed_values
 
-def parse_systemd_config(main_file, queries):
-    """Parse systemd configuration using standard paths and drop-ins for multiple queries"""
+def parse_systemd_config_legacy(main_file, queries):
+    """Parse systemd configuration using legacy API (systemd 252)"""
     # Standard systemd configuration paths
     conf_paths = ["/etc", "/run", "/usr/local/lib", "/usr/lib"]
 
@@ -210,6 +243,49 @@ def parse_systemd_config(main_file, queries):
         if conf_file_dirs_strv:
             lib.strv_free(conf_file_dirs_strv)
 
+def parse_systemd_config_new(main_file, queries):
+    """Parse systemd configuration using new API (systemd 257)"""
+    # Get unique sections from all queries
+    sections = list(set(section for section, key in queries))
+    sections_nulstr = '\0'.join(sections) + '\0'
+
+    # Create config table for all queries
+    config_table, parsed_values = create_config_table(config_parse_string_func, queries)
+
+    try:
+        result = lib.config_parse_standard_file_with_dropins_full(
+            None,  # root (NULL for standard paths)
+            main_file.encode('utf-8'),  # main_file
+            sections_nulstr.encode('utf-8'),  # sections
+            cast(lookup_func, c_void_p) if lookup_func else None,  # lookup
+            cast(config_table, c_void_p),  # table (as const void *)
+            CONFIG_PARSE_RELAXED,  # flags
+            None,  # userdata
+            None,  # ret_stats_by_path
+            None   # ret_dropin_files
+        )
+
+        # Extract results for each query
+        results = []
+        for parsed_value in parsed_values:
+            if parsed_value.value:
+                results.append(parsed_value.value.decode('utf-8'))
+            else:
+                results.append(None)
+
+        return results if result == 0 else [None] * len(queries)
+
+    except Exception as e:
+        print(f"Error parsing config: {e}", file=sys.stderr)
+        return [None] * len(queries)
+
+def parse_systemd_config(main_file, queries):
+    """Parse systemd configuration using appropriate API based on version"""
+    if systemd_version == '257':
+        return parse_systemd_config_new(main_file, queries)
+    else:
+        return parse_systemd_config_legacy(main_file, queries)
+
 def shell_escape(value):
     """Escape a value for safe use in shell assignment"""
     if not value:
@@ -252,7 +328,7 @@ Examples:
                        help='Pairs of shell_variable config_key')
 
     # Version
-    parser.add_argument('-v', '--version', action='version', version='rpi-systemd-config 1.0')
+    parser.add_argument('-v', '--version', action='version', version=f'rpi-systemd-config 1.1 (systemd {systemd_version})')
 
     args = parser.parse_args()
 

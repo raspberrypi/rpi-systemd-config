@@ -9,6 +9,8 @@ rpi-systemd-config - Query systemd configuration files
 ## DESCRIPTION
 **rpi-systemd-config** extracts values from systemd configuration files and outputs shell variable assignments. It uses systemd's own configuration parsing logic, following the same precedence rules and drop-in directory support as systemd itself.
 
+Supports both Debian Bookworm (systemd 252) and Debian Trixie (systemd 257).
+
 The tool searches configuration files using systemd's standard directory hierarchy and supports drop-in configuration files as described in **systemd.unit**(5).
 
 ## ARGUMENTS
@@ -73,7 +75,7 @@ TIMEOUT='30s'
 ## LIMITATIONS
 - Only supports configuration files that use systemd's standard configuration parser
 - Requires access to systemd's internal shared library
-- Currently tested on systemd version 252
+- Supports systemd versions 252 and 257
 - **Value parsing**: Uses systemd's generic string parser (`config_parse_string`) only. Does not perform specialized validation or parsing that systemd uses internally (such as `config_parse_bool`, `config_parse_hw_addr`, `config_parse_percent`, etc.). Values are returned as raw strings exactly as they appear in configuration files, without type validation or conversion.
 
 ## SEE ALSO
