@@ -1,3 +1,9 @@
+rpi-systemd-config (1.1.0) bookworm; urgency=medium
+
+  * Add Trixie support (systemd 257)
+
+ -- Richard Oliver <richard.oliver@raspberrypi.com>  Wed, 09 Jul 2025 16:09:54 +0100
+
 rpi-systemd-config (1.0.0) bookworm; urgency=medium
 
   * Initial release
