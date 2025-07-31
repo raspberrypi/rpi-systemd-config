@@ -2,8 +2,8 @@ Source: rpi-systemd-config
 Section: admin
 Priority: optional
 Maintainer: Richard Oliver <richard.oliver@raspberrypi.com>
-Build-Depends: debhelper (>= 9), python3, pandoc
-Standards-Version: 3.9.5
+Build-Depends: debhelper-compat (= 13), python3, pandoc
+Standards-Version: 4.7.2
 Homepage: https://www.raspberrypi.com/software
 
 Package: rpi-systemd-config
