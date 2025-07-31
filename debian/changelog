@@ -1,3 +1,12 @@
+rpi-systemd-config (1.1.1) trixie; urgency=medium
+
+  * debian: Switch arch to all
+  * Comprehensive .gitignore
+  * debian: Include 2025 in copyright
+  * debian: Update standards/compat for Trixie
+
+ -- Richard Oliver <richard.oliver@raspberrypi.com>  Thu, 31 Jul 2025 09:39:27 +0100
+
 rpi-systemd-config (1.1.0) bookworm; urgency=medium
 
   * Add Trixie support (systemd 257)
