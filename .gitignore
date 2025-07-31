@@ -1,9 +1,34 @@
-build/
-.debhelper/
-*.debhelper
-debian/debhelper-build-stamp
+# Debian packaging artifacts
 debian/files
-debian/rpi-systemd-config
-debian/rpi-systemd-config.1
-*.substvars
-*.egg-info/
+debian/.debhelper/
+debian/*/
+
+# Generated man pages
+debian/*.8
+debian/*.1
+
+# Build artifacts
+*.build
+*.changes
+*.dsc
+*.tar.gz
+*.tar.xz
+*.deb
+*.ddeb
+*.buildinfo
+
+# Editor files
+.vscode/
+*.swp
+*~
+.*.swp
+.*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary files
+.DS_Store
+Thumbs.db
