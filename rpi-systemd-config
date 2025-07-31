@@ -5,25 +5,15 @@ from ctypes import Structure, POINTER, c_char_p, c_int, c_void_p, c_uint, byref,
 import sys
 import argparse
 import os
-import platform
+import sysconfig
 
 # Dynamically find the systemd shared library
 def find_systemd_library():
     """Find the systemd shared library path for the current architecture"""
-    # Get the multiarch tuple for this system
-    machine = platform.machine()
-
-    # Common multiarch mappings
-    arch_mappings = {
-        'x86_64': 'x86_64-linux-gnu',
-        'aarch64': 'aarch64-linux-gnu',
-        'armv7l': 'arm-linux-gnueabihf',
-        'i686': 'i386-linux-gnu',
-    }
-
-    multiarch = arch_mappings.get(machine)
+    # Get the multiarch tuple from Python's build configuration
+    multiarch = sysconfig.get_config_var('MULTIARCH')
     if not multiarch:
-        raise OSError(f"Unsupported architecture: {machine}. Supported architectures: {', '.join(arch_mappings.keys())}")
+        raise OSError("Unable to determine system multiarch tuple. This may indicate an incomplete Python installation.")
 
     # Try to find available systemd library versions
     systemd_lib_dir = f'/usr/lib/{multiarch}/systemd'
